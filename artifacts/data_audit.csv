@@ -1,0 +1,11 @@
+check,value
+Source records,583985
+Usable source fields,17
+All records from January 2019,583985
+Day-of-week mismatches,0
+Invalid known arrival-time HHMM values,0
+Arrival-delay-new contradictions,0
+Late-15 flag contradictions,0
+Indistinguishable duplicate rows,7145
+Missing departure delay,16355
+Missing arrival delay,18022

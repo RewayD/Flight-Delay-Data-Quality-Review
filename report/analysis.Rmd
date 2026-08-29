@@ -1,0 +1,144 @@
+---
+title: "January 2019 Flight Delay: Data-Quality and Priority-Date Review"
+author: "Reway Du"
+date: "2026-08-28"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: readable
+    self_contained: true
+params:
+  artifact_dir: "../artifacts"
+---
+
+```{r setup, include=FALSE}
+library(data.table)
+library(knitr)
+library(scales)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+artifact_dir <- params$artifact_dir
+audit <- fread(file.path(artifact_dir, "data_audit.csv"))
+daily <- fread(file.path(artifact_dir, "daily_summary.csv"))
+priority <- fread(file.path(artifact_dir, "priority_dates.csv"))
+sensitivity <- fread(file.path(artifact_dir, "score_sensitivity.csv"))
+
+n_records <- audit[check == "Source records", value]
+n_fields <- audit[check == "Usable source fields", value]
+missing_arrivals <- audit[check == "Missing arrival delay", value]
+top_day <- as.Date(priority$FL_DATE[[1]])
+top_late <- priority$late15_rate[[1]]
+top_mean <- priority$mean_arrival_delay[[1]]
+top_p95 <- priority$p95_arrival_delay[[1]]
+```
+
+# Purpose
+
+This report is a portfolio reanalysis of a January 2019 U.S. flight extract.
+It asks two deliberately limited questions:
+
+1. Is the supplied file internally consistent enough for delay analysis?
+2. Which dates deserve further operational review based on several transparent
+   delay-severity measures?
+
+The analysis produces an investigation queue, not a causal claim about an
+airline, airport, weather event, or operational failure.
+
+# Data audit
+
+The supplied extract contains `r format(n_records, big.mark = ",")` records and
+`r n_fields` usable fields. It does not include carrier, flight number,
+cancellation/diversion, scheduled time, weather, or delay-cause fields. Missing
+arrival outcomes are retained and reported rather than silently treated as
+on-time flights.
+
+```{r audit-table}
+kable(audit, caption = "Internal data-quality checks", align = c("l", "r"))
+```
+
+```{r missingness-figure, out.width='78%', fig.align='center'}
+include_graphics(file.path(artifact_dir, "missingness.png"))
+```
+
+The `r format(missing_arrivals, big.mark = ",")` records without an arrival-delay
+outcome may include materially disrupted flights. Consequently, all severity
+rates are conditional on known arrival outcomes and may understate disruption.
+
+# Daily disruption profile
+
+For each date, the review calculates flight volume, missing-outcome rate, mean
+and median arrival delay, the 95th percentile, the share at least 15 minutes
+late, the share at least 60 minutes late, and the share that worsened by at
+least 60 minutes after departure.
+
+```{r late-rate-figure, out.width='96%', fig.align='center'}
+include_graphics(file.path(artifact_dir, "daily_late15_rate.png"))
+```
+
+```{r severity-figure, out.width='96%', fig.align='center'}
+include_graphics(file.path(artifact_dir, "daily_delay_severity.png"))
+```
+
+# Priority dates
+
+The priority score is the average percentile rank across five measures: mean
+delay, 95th-percentile delay, late-15 rate, severe-60 rate, and post-departure
+worsening rate. It is a relative review score within January 2019, not a
+probability or calibrated anomaly confidence.
+
+The highest-scoring date is **`r format(top_day, '%B %d, %Y')`**. Among flights
+with known arrival outcomes, `r percent(top_late, accuracy = 0.1)` arrived at
+least 15 minutes late; mean arrival delay was `r number(top_mean, accuracy=0.1)`
+minutes and the 95th percentile was `r number(top_p95, accuracy=1)` minutes.
+
+```{r priority-table}
+display_priority <- priority[1:10, .(
+  Date = as.Date(FL_DATE),
+  Flights = flights,
+  `Known arrivals` = known_arrivals,
+  `Missing arrival outcome` = percent(arrival_missing_rate, accuracy = 0.1),
+  `Mean delay (min)` = round(mean_arrival_delay, 1),
+  `P95 delay (min)` = round(p95_arrival_delay, 1),
+  `Late 15+` = percent(late15_rate, accuracy = 0.1),
+  `Priority score` = round(priority_score, 1)
+)]
+kable(display_priority, caption = "Highest-priority dates for follow-up review")
+```
+
+# Sensitivity check
+
+To check whether one measure alone drives the ranking, the score is recalculated
+five times, each time leaving out one component. The table reports how many of
+the original top five dates remain.
+
+```{r sensitivity-table}
+kable(sensitivity, caption = "Leave-one-metric-out priority-score sensitivity")
+```
+
+# Limitations
+
+- Known-arrival statistics can be biased if missing outcomes represent the most
+  disrupted flights.
+- The file lacks carrier, schedule, cancellation/diversion, weather, and causal
+  delay fields.
+- Daily observations are not independent flight-level experiments.
+- The composite score is a triage device and should be paired with source-record
+  review and external operational context.
+- A later month or external event labels would be required for genuine
+  out-of-sample validation.
+
+# Portfolio context
+
+This independent, shortened portfolio edition was inspired by a collaborative
+STA 4320 course project. It focuses on data validation and priority-date review.
+It does not present the original team submission or claim sole authorship of
+work completed by other team members. The archived contribution statement
+attributes Tasks 1 and 2, overall formatting/editing, and interpretation
+corrections to Reway Du; the later anomaly-detection tasks belonged to the
+broader team.
+
+OpenAI Codex assisted with the post-course refactor, implementation,
+documentation, and testing. Reway remains responsible for rerunning the code,
+checking the outputs, explaining the methods and limitations, and obtaining any
+required teammate or instructor permission before publication.
