@@ -69,12 +69,6 @@ formatting/editing, and report-interpretation corrections to Reway Du. Tasks 3
 through 5 were shared among three classmates. This rewrite deliberately avoids
 claiming sole authorship of those teammates' anomaly-detection work.
 
-Before making the repository public, obtain any teammate or instructor
-permission required by the course policy.
 
-OpenAI Codex assisted with the post-course refactor, implementation,
-documentation, and testing. Reway should rerun the project and be able to
-explain every audit, metric, score, and limitation before presenting it as
-portfolio work.
 
 See [`CHANGES.md`](CHANGES.md) for the full revision list.
